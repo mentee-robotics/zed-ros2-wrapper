@@ -374,6 +374,27 @@ void ZedCamera::getParam(
   }
 }
 
+void ZedCamera::getParam(
+  std::string paramName, std::vector<int>& defValue, std::string log_info, bool dynamic)
+{
+  rcl_interfaces::msg::ParameterDescriptor descriptor;
+  descriptor.read_only = !dynamic;
+
+  declare_parameter(paramName, rclcpp::ParameterValue(defValue), descriptor);
+
+  rclcpp::Parameter paramVal;
+  if (!get_parameter(paramName, paramVal)) {
+    RCLCPP_WARN_STREAM(
+      get_logger(), "The parameter '" <<
+        paramName <<
+        "' is not available or is not valid, using the default value");
+  }
+
+  if (!log_info.empty()) {
+    RCLCPP_INFO_STREAM(get_logger(), log_info << paramVal);
+  }
+}
+
 void ZedCamera::initParameters()
 {
   // DEBUG parameters
@@ -804,6 +825,7 @@ void ZedCamera::getVideoParams()
   }
   getParam("video.exposure", mCamExposure, mCamExposure, " * [DYN] Exposure: ", true);
   getParam("video.gain", mCamGain, mCamGain, " * [DYN] Gain: ", true);
+  getParam("video.auto_exposure_roi", mCamExpRoiVec, "", true);
   getParam("video.auto_whitebalance", mCamAutoWB, mCamAutoWB, "", true);
   RCLCPP_INFO(get_logger(), " * [DYN] Auto White Balance: %s", mCamAutoWB ? "TRUE" : "FALSE");
   if (mCamAutoWB) {
@@ -2529,6 +2551,22 @@ rcl_interfaces::msg::SetParametersResult ZedCamera::callback_paramChange(
 
       RCLCPP_INFO_STREAM(
         get_logger(), "Parameter '" << param.get_name() << "' correctly set to " << val);
+    } else if (param.get_name() == "video.auto_exposure_roi") {
+      rclcpp::ParameterType correctType = rclcpp::ParameterType::PARAMETER_INTEGER_ARRAY;
+      if (param.get_type() != correctType) {
+        result.successful = false;
+        result.reason = param.get_name() + " must be a " + rclcpp::to_string(correctType);
+        RCLCPP_WARN_STREAM(get_logger(), result.reason);
+        break;
+      }
+      mCamExpRoi.x = param.as_integer_array()[0];
+      mCamExpRoi.y = param.as_integer_array()[1];
+      mCamExpRoi.width = param.as_integer_array()[2];
+      mCamExpRoi.height = param.as_integer_array()[3];
+      mCamAutoExpRoi = true;
+
+      // RCLCPP_INFO_STREAM(
+      //   get_logger(), "Parameter '" << param.get_name() << "' correctly set to: " << param.as_int());
     } else if (param.get_name() == "video.auto_whitebalance") {
       rclcpp::ParameterType correctType = rclcpp::ParameterType::PARAMETER_BOOL;
       if (param.get_type() != correctType) {
@@ -7567,6 +7605,17 @@ void ZedCamera::applyVideoSettings()
       }
     }
 
+    if (mCamAutoExpRoi) {
+      sl::SIDE side = static_cast<sl::SIDE>(2); // Both sides
+      setting = sl::VIDEO_SETTINGS::AEC_AGC_ROI;  
+      err = mZed.setCameraSettings(setting, mCamExpRoi, side);
+      mCamAutoExpRoi = false;
+      if (err != sl::ERROR_CODE::SUCCESS) {
+        RCLCPP_WARN_STREAM(
+          get_logger(),
+          "Error setting " << sl::toString(setting).c_str() << ": " << sl::toString(err).c_str() );
+      }
+    }
 
     if (mTriggerAutoWB) {
       setting = sl::VIDEO_SETTINGS::WHITEBALANCE_AUTO;
