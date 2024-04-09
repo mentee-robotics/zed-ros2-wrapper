@@ -404,9 +404,10 @@ private:
   bool mCamAutoExpGain = true;
   int mCamGain = 80;
   int mCamExposure = 80;
-  std::vector<int> mCamExpRoiVec = {0, 0, 1280, 720};
+  std::vector<int> mCamExpRoiVec = {0, 0, 1280, 720, 2};
   sl::Rect mCamExpRoi = sl::Rect(0, 0, 1280, 720);
-  bool mCamAutoExpRoi = true;
+  sl::SIDE mCamExpRoiSide = sl::SIDE::BOTH;
+  bool mCamAutoExpRoi = false;
   bool mCamAutoWB = true;
   int mCamWBTemp = 42;
   int mDepthConf = 50;
@@ -644,6 +645,7 @@ private:
   bool mVdPublishing = false; // Indicates if video and depth data are subscribed and then published
   bool mPcPublishing = false; // Indicates if point cloud data are subscribed and then published
   bool mTriggerAutoExpGain = true;  // Triggered on start
+  bool mTriggerAutoExpRoi = true;       // Triggered on start
   bool mTriggerAutoWB = true;       // Triggered on start
   bool mRecording = false;
   sl::RecordingStatus mRecStatus = sl::RecordingStatus();
