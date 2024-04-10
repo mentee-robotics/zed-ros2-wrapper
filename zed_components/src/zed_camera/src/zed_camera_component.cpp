@@ -837,9 +837,6 @@ void ZedCamera::getVideoParams()
   getParam("video.gain", mCamGain, mCamGain, " * [DYN] Gain: ", true);
   getParam("video.auto_exposure_roi", mCamAutoExpRoi, mCamAutoExpRoi, "", true);
   RCLCPP_INFO(get_logger(), " * [DYN] Auto Exposure ROI active: %s", mCamAutoExpRoi ? "TRUE" : "FALSE");
-  if (mCamAutoExpRoi) {
-    mTriggerAutoExpRoi = true;
-  }
   getParam("video.roi", mCamExpRoiVec, " * [DYN] Exposure ROI: ", true);
   getParam("video.auto_whitebalance", mCamAutoWB, mCamAutoWB, "", true);
   RCLCPP_INFO(get_logger(), " * [DYN] Auto White Balance: %s", mCamAutoWB ? "TRUE" : "FALSE");
