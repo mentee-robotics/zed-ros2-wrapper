@@ -388,11 +388,18 @@ void ZedCamera::getParam(
       get_logger(), "The parameter '" <<
         paramName <<
         "' is not available or is not valid, using the default value");
+  } else {
+    mCamExpRoi.x = paramVal.as_integer_array()[0];
+    mCamExpRoi.y = paramVal.as_integer_array()[1];
+    mCamExpRoi.width = paramVal.as_integer_array()[2];
+    mCamExpRoi.height = paramVal.as_integer_array()[3];
+    mCamExpRoiSide = sl::SIDE(paramVal.as_integer_array()[4]);
   }
 
   if (!log_info.empty()) {
+    std::vector<int64_t> temp = paramVal.as_integer_array();
     std::ostringstream oss;
-    std::copy(defValue.begin(), defValue.end()-1, std::ostream_iterator<int>(oss, ", "));
+    std::copy(temp.begin(), temp.end()-1, std::ostream_iterator<int>(oss, ", "));
     oss << defValue.back();
     RCLCPP_INFO_STREAM(get_logger(), log_info << oss.str());
   }
@@ -830,6 +837,9 @@ void ZedCamera::getVideoParams()
   getParam("video.gain", mCamGain, mCamGain, " * [DYN] Gain: ", true);
   getParam("video.auto_exposure_roi", mCamAutoExpRoi, mCamAutoExpRoi, "", true);
   RCLCPP_INFO(get_logger(), " * [DYN] Auto Exposure ROI active: %s", mCamAutoExpRoi ? "TRUE" : "FALSE");
+  if (mCamAutoExpRoi) {
+    mTriggerAutoExpRoi = true;
+  }
   getParam("video.roi", mCamExpRoiVec, " * [DYN] Exposure ROI: ", true);
   getParam("video.auto_whitebalance", mCamAutoWB, mCamAutoWB, "", true);
   RCLCPP_INFO(get_logger(), " * [DYN] Auto White Balance: %s", mCamAutoWB ? "TRUE" : "FALSE");
@@ -2570,6 +2580,7 @@ rcl_interfaces::msg::SetParametersResult ZedCamera::callback_paramChange(
       if (val != mCamAutoExpRoi) {
         if (!val) {
           mCamExpRoi = sl::Rect(0, 0, mCamWidth, mCamHeight);
+          mCamExpRoiSide = sl::SIDE::BOTH;
         }
         mTriggerAutoExpRoi = true;
       }
@@ -2596,12 +2607,13 @@ rcl_interfaces::msg::SetParametersResult ZedCamera::callback_paramChange(
         mCamExpRoi.y = param.as_integer_array()[1];
         mCamExpRoi.width = param.as_integer_array()[2];
         mCamExpRoi.height = param.as_integer_array()[3];
-        mCamExpRoiSide = sl::SIDE(param.as_integer_array()[4]); // 0: left, 1: right, 2: both
+        mCamExpRoiSide = sl::SIDE(param.as_integer_array()[4]);
         mTriggerAutoExpRoi = true;
+        RCLCPP_INFO_STREAM(
+          get_logger(), "Parameter '" << param.get_name() << "' correctly set to: " << mCamExpRoi.x <<
+            ", " << mCamExpRoi.y << ", " << mCamExpRoi.width << ", " << mCamExpRoi.height << ", " <<
+            static_cast<int>(mCamExpRoiSide));
       }
-
-      // RCLCPP_INFO_STREAM(
-      //   get_logger(), "Parameter '" << param.get_name() << "' correctly set to: " << param.as_int());
     } else if (param.get_name() == "video.auto_whitebalance") {
       rclcpp::ParameterType correctType = rclcpp::ParameterType::PARAMETER_BOOL;
       if (param.get_type() != correctType) {
