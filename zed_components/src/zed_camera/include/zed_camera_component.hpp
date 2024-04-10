@@ -404,7 +404,7 @@ private:
   bool mCamAutoExpGain = true;
   int mCamGain = 80;
   int mCamExposure = 80;
-  std::vector<int> mCamExpRoiVec = {0, 0, 1280, 720, 2};
+  std::vector<int> mCamExpRoiVec = {0, 0, 1280, 720, static_cast<int>(sl::SIDE::BOTH)};
   sl::Rect mCamExpRoi = sl::Rect(0, 0, 1280, 720);
   sl::SIDE mCamExpRoiSide = sl::SIDE::BOTH;
   bool mCamAutoExpRoi = false;
