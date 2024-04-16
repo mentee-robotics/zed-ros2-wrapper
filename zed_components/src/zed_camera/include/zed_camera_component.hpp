@@ -408,6 +408,7 @@ private:
   double mPcPubRate = 15.0;
   double mFusedPcPubRate = 1.0;
   bool mRemoveSatAreas = true;
+  bool mEnableFillMode = false;
 
   int mGmslExpTime = 16666;
   int mGmslAutoExpTimeRangeMin = 28;
