@@ -16,7 +16,7 @@
 		"--ipc=host", 
 		"--pid=host", 
 		"-e", "RMW_IMPLEMENTATION=rmw_cyclonedds_cpp", 
-		"-e", "CYCLONEDDS_URI=file:///mtb_generic_config/dds/humble_cyclonedds_config.xml", 
+		"-e", "CYCLONEDDS_URI=file:///mtb_generic_config/${localEnv:MTB_CYCLONEDDS_CONFIG_PATH}/humble_cyclonedds_config.xml", 
 		"-e", "NVIDIA_DRIVER_CAPABILITIES=all", 
 		"-e", "DISPLAY", 
 		"-e", "ROS_DOMAIN_ID=${localEnv:ROS_DOMAIN_ID}", 
