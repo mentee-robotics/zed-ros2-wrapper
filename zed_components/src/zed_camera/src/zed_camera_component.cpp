@@ -4485,7 +4485,6 @@ bool ZedCamera::startObjDetect()
   sl::ObjectDetectionParameters od_p;
   od_p.enable_segmentation = false;
   od_p.enable_tracking = mObjDetTracking;
-  // od_p.image_sync = true;
   od_p.detection_model = mObjDetModel;
   od_p.filtering_mode = mObjFilterMode;
   od_p.prediction_timeout_s = mObjDetPredTimeout;
@@ -4602,7 +4601,6 @@ bool ZedCamera::startBodyTracking()
   bt_p.enable_body_fitting = mBodyTrkFitting;
   bt_p.enable_segmentation = false;
   bt_p.enable_tracking = mBodyTrkEnableTracking;
-  // bt_p.image_sync = true;
   bt_p.max_range = mBodyTrkMaxRange;
   bt_p.prediction_timeout_s = mBodyTrkPredTimeout;
 
@@ -6948,11 +6946,6 @@ void ZedCamera::publishPose()
     DEBUG_STREAM_PT("publishPose: Exception while counting subscribers");
     return;
   }
-
-  tf2::Transform base_pose;
-  base_pose.setIdentity();
-
-  base_pose = mMap2BaseTransf;
 
   std_msgs::msg::Header header;
   header.stamp = mFrameTimestamp;
