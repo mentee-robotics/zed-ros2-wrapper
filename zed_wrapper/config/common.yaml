@@ -53,7 +53,7 @@
             openni_depth_mode: false # 'false': 32bit float [meters], 'true': 16bit unsigned int [millimeters]
             point_cloud_freq: 10.0 # [DYNAMIC] - frequency of the pointcloud publishing (equal or less to `grab_frame_rate` value)
             depth_confidence: 50 # [DYNAMIC]
-            depth_texture_conf: 100 # [DYNAMIC]
+            depth_texture_conf: 99 # [DYNAMIC]
             remove_saturated_areas: true # [DYNAMIC]
             enable_fill_mode: false # [DYNAMIC]
             qos_history: 1 # '1': KEEP_LAST - '2': KEEP_ALL
@@ -63,7 +63,7 @@
 
         pos_tracking:
             pos_tracking_enabled: true # True to enable positional tracking from start
-            pos_tracking_mode: 'GEN_2' # Matches the ZED SDK setting: 'QUALITY', 'STANDARD'
+            pos_tracking_mode: 'GEN_2' # Matches the ZED SDK setting: 'GEN_2', 'GEN_1'
             imu_fusion: true # enable/disable IMU fusion. When set to false, only the optical odometry will be used.
             publish_tf: true # [usually overwritten by launch file] publish `odom -> camera_link` TF
             publish_map_tf: true # [usually overwritten by launch file] publish `map -> odom` TF
