@@ -277,6 +277,7 @@ private:
   bool mSvoRealtime = false;
   int mVerbose = 1;
   int mGpuId = -1;
+  std::string mOpencvCalibFile;
   sl::RESOLUTION mCamResol = sl::RESOLUTION::HD1080;  // Default resolution: RESOLUTION_HD1080
   PubRes mPubResolution = PubRes::NATIVE;   // Use native grab resolution by default
   double mCustomDownscaleFactor = 1.0; // Used to rescale data with user factor
@@ -302,7 +303,7 @@ private:
   bool mPoseSmoothing = false;
   bool mAreaMemory = true;
   std::string mAreaMemoryDbPath = "";
-  sl::POSITIONAL_TRACKING_MODE mPosTrkMode = sl::POSITIONAL_TRACKING_MODE::QUALITY;
+  sl::POSITIONAL_TRACKING_MODE mPosTrkMode = sl::POSITIONAL_TRACKING_MODE::GEN_2;
   bool mImuFusion = true;
   bool mFloorAlignment = false;
   bool mTwoDMode = false;
@@ -320,7 +321,7 @@ private:
   std::string mGnssTopic = "/gps/fix";
 #if (ZED_SDK_MINOR_VERSION == 0 && ZED_SDK_PATCH_VERSION < 6)
   double mGnssInitDistance = 5.0;
-#elif (ZED_SDK_MINOR_VERSION == 0 && ZED_SDK_PATCH_VERSION >= 6)
+#else
   bool mGnssEnableReinitialization = true;
   bool mGnssEnableRollingCalibration = true;
   bool mGnssEnableTranslationUncertaintyTarget = false;
@@ -365,10 +366,8 @@ private:
   double mBodyTrkConfThresh = 50.0;
   int mBodyTrkMinKp = 10;
 
-  #if (ZED_SDK_MINOR_VERSION == 0 && ZED_SDK_PATCH_VERSION >= 6)
   double mPdMaxDistanceThreshold = 0.15;
   double mPdNormalSimilarityThreshold = 15.0;
-  #endif
 
   // TODO(Walter) remove QoS parameters, use instead the new ROS2 Humble QoS settings engine
 
@@ -415,6 +414,7 @@ private:
   double mPcPubRate = 15.0;
   double mFusedPcPubRate = 1.0;
   bool mRemoveSatAreas = true;
+  bool mEnableFillMode = false;
 
   int mGmslExpTime = 16666;
   int mGmslAutoExpTimeRangeMin = 28;
@@ -655,8 +655,8 @@ private:
 
 #if (ZED_SDK_MINOR_VERSION == 0 && ZED_SDK_PATCH_VERSION < 6)
   sl::POSITIONAL_TRACKING_STATE mGeoPoseStatus;
-#elif (ZED_SDK_MINOR_VERSION == 0 && ZED_SDK_PATCH_VERSION >= 6)
-  sl::GNSS_CALIBRATION_STATE mGeoPoseStatus;
+#else
+  sl::GNSS_FUSION_STATUS mGeoPoseStatus;
 #endif
 
   bool mResetOdom = false;
