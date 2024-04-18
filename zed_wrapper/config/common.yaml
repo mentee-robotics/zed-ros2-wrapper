@@ -40,6 +40,8 @@
             auto_exposure_gain: true # [DYNAMIC]
             exposure: 80 # [DYNAMIC]
             gain: 80 # [DYNAMIC]
+            auto_exposure_roi: true # [DYNAMIC]
+            roi: [0, 0, 1280, 720, 2] # [DYNAMIC] - [X, Y, WIDTH, HEIGHT, SIDE] - SIDE: 0: Left, 1: Right, 2: Both
             auto_whitebalance: true # [DYNAMIC]
             whitebalance_temperature: 42 # [DYNAMIC] - [28,65] works only if `auto_whitebalance` is false
             qos_history: 1 # '1': KEEP_LAST - '2': KEEP_ALL
