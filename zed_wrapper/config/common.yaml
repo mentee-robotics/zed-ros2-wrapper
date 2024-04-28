@@ -61,6 +61,7 @@
             depth_confidence: 50 # [DYNAMIC]
             depth_texture_conf: 100 # [DYNAMIC]
             remove_saturated_areas: true # [DYNAMIC]
+            enable_fill_mode: false # [DYNAMIC]
 
         pos_tracking:
             pos_tracking_enabled: true # True to enable positional tracking from start

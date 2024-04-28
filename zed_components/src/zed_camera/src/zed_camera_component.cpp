@@ -1237,6 +1237,12 @@ void ZedCamera::getDepthParams()
     RCLCPP_INFO(
       get_logger(), " * [DYN] Remove saturated areas: %s",
       mRemoveSatAreas ? "TRUE" : "FALSE");
+    getParam(
+      "depth.enable_fill_mode", mEnableFillMode, mEnableFillMode, 
+      "", true);
+    RCLCPP_INFO(
+      get_logger(), " * [DYN] Enable fill mode: %s", 
+      mEnableFillMode ? "TRUE" : "FALSE");      
     // ------------------------------------------
   }
 }
@@ -2764,6 +2770,20 @@ rcl_interfaces::msg::SetParametersResult ZedCamera::callback_paramChange(
         "Parameter '" << param.get_name()
                       << "' correctly set to "
                       << (mRemoveSatAreas ? "TRUE" : "FALSE"));
+    } else if (param.get_name() == "depth.enable_fill_mode") {
+      rclcpp::ParameterType correctType = rclcpp::ParameterType::PARAMETER_BOOL;
+      if (param.get_type() != correctType) {
+        result.successful = false;
+        result.reason = param.get_name() + " must be a " + rclcpp::to_string(correctType);
+        RCLCPP_WARN_STREAM(get_logger(), result.reason);
+        break;
+      }
+
+      mEnableFillMode = param.as_bool();
+
+      RCLCPP_INFO_STREAM(
+        get_logger(), "Parameter '" << param.get_name() << "' correctly set to " <<
+          (mEnableFillMode ? "TRUE" : "FALSE"));
     } else if (param.get_name() == "pos_tracking.transform_time_offset") {
       rclcpp::ParameterType correctType =
         rclcpp::ParameterType::PARAMETER_DOUBLE;
@@ -5775,6 +5795,7 @@ void ZedCamera::threadFunc_zedGrab()
   mRunParams.enable_depth = false;
   mRunParams.measure3D_reference_frame = sl::REFERENCE_FRAME::CAMERA;
   mRunParams.remove_saturated_areas = mRemoveSatAreas;
+  mRunParams.enable_fill_mode = mEnableFillMode;
   // <---- Grab Runtime parameters
 
   // Infinite grab thread
@@ -8338,6 +8359,7 @@ void ZedCamera::applyDepthSettings()
     mRunParams.texture_confidence_threshold =
       mDepthTextConf;      // Update depth texture confidence if changed
     mRunParams.remove_saturated_areas = mRemoveSatAreas;
+    mRunParams.enable_fill_mode = mEnableFillMode;
 
     DEBUG_STREAM_COMM("Depth extraction enabled");
     mRunParams.enable_depth = true;
