@@ -179,6 +179,7 @@ protected:
     rclcpp::Time t);
   void publishPose();
   void publishGnssPose();
+  void publishPoseDelay();
   void publishPoseStatus();
   void publishGnssPoseStatus();
   void publishGeoPoseStatus();
@@ -251,6 +252,7 @@ private:
   std::string mOdomTopic;
   std::string mPoseTopic;
   std::string mPoseStatusTopic;
+  std::string mPoseDelayTopic;
   std::string mPoseCovTopic;
   std::string mGnssPoseTopic;
   std::string mGnssPoseStatusTopic;
@@ -588,6 +590,7 @@ private:
   pointcloudPub mPubCloud;
   pointcloudPub mPubFusedCloud;
   posePub mPubPose;
+  poseDelayPub mPubPoseDelay;
   poseStatusPub mPubPoseStatus;
   poseCovPub mPubPoseCov;
   odomPub mPubOdom;
