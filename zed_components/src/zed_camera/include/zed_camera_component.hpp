@@ -226,6 +226,8 @@ protected:
   std::string getParam(
     std::string paramName,
     std::vector<std::vector<float>> & outVal);
+  void getParam(std::string paramName, std::vector<int> & defaultVal, std::string log_info = std::string(),
+    bool dynamic = false);
   std::string parseRoiPoly(
     const std::vector<std::vector<float>> & in_poly,
     std::vector<sl::float2> & out_poly);
@@ -442,6 +444,10 @@ private:
   bool mCamAutoExpGain = true;
   int mCamGain = 80;
   int mCamExposure = 80;
+  std::vector<int> mCamExpRoiVec = {0, 0, 1280, 720, static_cast<int>(sl::SIDE::BOTH)};
+  sl::Rect mCamExpRoi = sl::Rect(0, 0, 1280, 720);
+  sl::SIDE mCamExpRoiSide = sl::SIDE::BOTH;
+  bool mCamAutoExpRoi = false;
   bool mCamAutoWB = true;
   int mCamWBTemp = 42;
   int mDepthConf = 50;
@@ -698,6 +704,7 @@ private:
   bool mPcPublishing =
     false;    // Indicates if point cloud data are subscribed and then published
   bool mTriggerAutoExpGain = true;  // Triggered on start
+  bool mTriggerAutoExpRoi = true;       // Triggered on start
   bool mTriggerAutoWB = true;       // Triggered on start
   bool mRecording = false;
   sl::RecordingStatus mRecStatus = sl::RecordingStatus();
