@@ -6029,6 +6029,33 @@ void ZedCamera::threadFunc_zedGrab()
       // <---- Check recording status
     }
 
+    if (!mDepthDisabled) {
+      // ----> Localization processing
+      if (mPosTrackingStarted) {
+        if (!mSvoPause) {
+          DEBUG_PT("================================================================");
+          DEBUG_PT("***** processOdometry *****");
+          processOdometry();
+          DEBUG_PT("***** processPose *****");
+          processPose();
+          if (mGnssFusionEnabled) {
+            if (mSvoMode) {
+              DEBUG_PT("***** processSvoGnssData *****");
+              processSvoGnssData();
+            }
+            DEBUG_PT("***** processGeoPose *****");
+            processGeoPose();
+          }
+        }
+
+        // Publish `odom` and `map` TFs at the grab frequency
+        // RCLCPP_INFO(get_logger(), "Publishing TF -> threadFunc_zedGrab");
+        DEBUG_PT("***** publishTFs *****");
+        publishTFs(mFrameTimestamp);
+      }
+      // <---- Localization processing
+    }
+    
     // ----> Retrieve Image/Depth data if someone has subscribed to
     // Retrieve data if there are subscriber to topics
     if (areVideoDepthSubscribed()) {
@@ -6087,31 +6114,6 @@ void ZedCamera::threadFunc_zedGrab()
         mPcPublishing = false;
       }
       // <---- Retrieve the point cloud if someone has subscribed to
-
-      // ----> Localization processing
-      if (mPosTrackingStarted) {
-        if (!mSvoPause) {
-          DEBUG_PT("================================================================");
-          DEBUG_PT("***** processOdometry *****");
-          processOdometry();
-          DEBUG_PT("***** processPose *****");
-          processPose();
-          if (mGnssFusionEnabled) {
-            if (mSvoMode) {
-              DEBUG_PT("***** processSvoGnssData *****");
-              processSvoGnssData();
-            }
-            DEBUG_PT("***** processGeoPose *****");
-            processGeoPose();
-          }
-        }
-
-        // Publish `odom` and `map` TFs at the grab frequency
-        // RCLCPP_INFO(get_logger(), "Publishing TF -> threadFunc_zedGrab");
-        DEBUG_PT("***** publishTFs *****");
-        publishTFs(mFrameTimestamp);
-      }
-      // <---- Localization processing
 
       mObjDetMutex.lock();
       if (mObjDetRunning) {
