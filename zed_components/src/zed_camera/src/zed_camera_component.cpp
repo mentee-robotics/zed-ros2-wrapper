@@ -918,8 +918,7 @@ void ZedCamera::getGeneralParams()
     if (mPubFrameRate > mCamGrabFrameRate) {
       RCLCPP_WARN(
         get_logger(),
-        "'pub_frame_rate' cannot be bigger than 'grab_frame_rate'");
-      mPubFrameRate = mCamGrabFrameRate;
+        "'pub_frame_rate' is bigger than 'grab_frame_rate'. Publish will be as fast as possible");
     }
     if (mPubFrameRate < 0.1) {
       RCLCPP_WARN(
