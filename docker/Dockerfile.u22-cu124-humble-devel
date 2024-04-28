@@ -56,6 +56,7 @@ RUN apt-get update || true && \
   ros-${ROS2_DIST}-image-transport-plugins \
   ros-${ROS2_DIST}-diagnostic-updater \
   ros-${ROS2_DIST}-xacro \
+  ros-${ROS2_DIST}-rmw-cyclonedds-cpp \
   python3-flake8-docstrings \
   python3-pip \
   python3-pytest-cov \
@@ -89,7 +90,10 @@ ENV ROS_DISTRO ${ROS2_DIST}
 
 # Copy the sources in the Docker image
 WORKDIR /root/ros2_ws/src
-COPY tmp_sources/ ./
+ADD zed_components/ /root/ros2_ws/src/zed_components/
+ADD zed_ros2/ /root/ros2_ws/src/zed_ros2/
+ADD zed_wrapper/ /root/ros2_ws/src/zed_wrapper/
+ADD zed-ros2-interfaces/ /root/ros2_ws/src/zed-ros2-interfaces/
 
 # RUN ls -lah /root/ros2_ws/src/
 WORKDIR /root/ros2_ws/
@@ -107,7 +111,7 @@ RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash && \
 WORKDIR /root/ros2_ws
 
 # Setup environment variables
-COPY ros_entrypoint.sh /sbin/ros_entrypoint.sh
+COPY docker/ros_entrypoint.sh /sbin/ros_entrypoint.sh
 RUN sudo chmod 755 /sbin/ros_entrypoint.sh
 
 ENTRYPOINT ["/sbin/ros_entrypoint.sh"]

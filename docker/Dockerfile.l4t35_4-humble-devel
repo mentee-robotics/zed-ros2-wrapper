@@ -18,6 +18,7 @@ ARG DIAGNOSTICS_VERSION=3.0.0
 ARG AMENT_LINT_VERSION=0.12.4
 ARG GEOGRAPHIC_INFO_VERSION=1.0.4
 ARG ROBOT_LOCALIZATION_VERSION=3.4.2
+ARG RMW_CYCLONDDS=1.3.4
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -55,7 +56,10 @@ ENV ROS_DISTRO ${ROS2_DIST}
 
 # Copy the sources in the Docker image
 WORKDIR /root/ros2_ws/src
-COPY tmp_sources/ ./
+ADD zed_components/ /root/ros2_ws/src/zed_components/
+ADD zed_ros2/ /root/ros2_ws/src/zed_ros2/
+ADD zed_wrapper/ /root/ros2_ws/src/zed_wrapper/
+ADD zed-ros2-interfaces/ /root/ros2_ws/src/zed-ros2-interfaces/
 
 # Install missing dependencies
 WORKDIR /root/ros2_ws/src
@@ -64,6 +68,7 @@ RUN wget https://github.com/ros/xacro/archive/refs/tags/${XACRO_VERSION}.tar.gz 
   wget https://github.com/ament/ament_lint/archive/refs/tags/${AMENT_LINT_VERSION}.tar.gz -O - | tar -xvz && mv ament_lint-${AMENT_LINT_VERSION} ament-lint && \
   wget https://github.com/cra-ros-pkg/robot_localization/archive/refs/tags/${ROBOT_LOCALIZATION_VERSION}.tar.gz -O - | tar -xvz && mv robot_localization-${ROBOT_LOCALIZATION_VERSION} robot-localization && \
   wget https://github.com/ros-geographic-info/geographic_info/archive/refs/tags/${GEOGRAPHIC_INFO_VERSION}.tar.gz -O - | tar -xvz && mv geographic_info-${GEOGRAPHIC_INFO_VERSION} geographic-info && \
+  wget https://github.com/ros2/rmw_cyclonedds/archive/refs/tags/${RMW_CYCLONDDS}.tar.gz -O - | tar -xvz && mv rmw_cyclonedds-${RMW_CYCLONDDS} rmw_cyclonedds && \
   cp -r geographic-info/geographic_msgs/ . && \
   rm -rf geographic-info && \
   git clone https://github.com/ros-drivers/nmea_msgs.git --branch ros2 && \  
@@ -90,7 +95,7 @@ RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/install/setup.bash && \
 WORKDIR /root/ros2_ws
 
 # Setup environment variables 
-COPY ros_entrypoint_jetson.sh /sbin/ros_entrypoint.sh
+COPY docker/ros_entrypoint_jetson.sh /sbin/ros_entrypoint.sh
 RUN sudo chmod 755 /sbin/ros_entrypoint.sh
 
 ENTRYPOINT ["/sbin/ros_entrypoint.sh"]
