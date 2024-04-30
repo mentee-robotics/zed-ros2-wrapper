@@ -36,6 +36,8 @@
             auto_exposure_gain: true # [DYNAMIC]
             exposure: 80 # [DYNAMIC]
             gain: 80 # [DYNAMIC]
+            auto_exposure_roi: false # [DYNAMIC]
+            roi: [0, 0, 1280, 720, 2] # [DYNAMIC] - [X, Y, WIDTH, HEIGHT, SIDE] - SIDE: 0: Left, 1: Right, 2: Both
             auto_whitebalance: true # [DYNAMIC]
             whitebalance_temperature: 42 # [DYNAMIC] - [28,65] works only if `auto_whitebalance` is false
 
@@ -61,6 +63,7 @@
             depth_confidence: 50 # [DYNAMIC]
             depth_texture_conf: 100 # [DYNAMIC]
             remove_saturated_areas: true # [DYNAMIC]
+            enable_fill_mode: false # [DYNAMIC]
 
         pos_tracking:
             pos_tracking_enabled: true # True to enable positional tracking from start

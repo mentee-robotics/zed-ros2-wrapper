@@ -410,6 +410,37 @@ void ZedCamera::getParam(
   }
 }
 
+void ZedCamera::getParam(
+  std::string paramName, std::vector<int>& defValue, std::string log_info, bool dynamic)
+{
+  rcl_interfaces::msg::ParameterDescriptor descriptor;
+  descriptor.read_only = !dynamic;
+
+  declare_parameter(paramName, rclcpp::ParameterValue(defValue), descriptor);
+
+  rclcpp::Parameter paramVal;
+  if (!get_parameter(paramName, paramVal)) {
+    RCLCPP_WARN_STREAM(
+      get_logger(), "The parameter '" <<
+        paramName <<
+        "' is not available or is not valid, using the default value");
+  } else {
+    mCamExpRoi.x = paramVal.as_integer_array()[0];
+    mCamExpRoi.y = paramVal.as_integer_array()[1];
+    mCamExpRoi.width = paramVal.as_integer_array()[2];
+    mCamExpRoi.height = paramVal.as_integer_array()[3];
+    mCamExpRoiSide = sl::SIDE(paramVal.as_integer_array()[4]);
+  }
+
+  if (!log_info.empty()) {
+    std::vector<int64_t> temp = paramVal.as_integer_array();
+    std::ostringstream oss;
+    std::copy(temp.begin(), temp.end()-1, std::ostream_iterator<int>(oss, ", "));
+    oss << defValue.back();
+    RCLCPP_INFO_STREAM(get_logger(), log_info << oss.str());
+  }
+}
+
 void ZedCamera::initParameters()
 {
   // DEBUG parameters
@@ -918,8 +949,7 @@ void ZedCamera::getGeneralParams()
     if (mPubFrameRate > mCamGrabFrameRate) {
       RCLCPP_WARN(
         get_logger(),
-        "'pub_frame_rate' cannot be bigger than 'grab_frame_rate'");
-      mPubFrameRate = mCamGrabFrameRate;
+        "'pub_frame_rate' is bigger than 'grab_frame_rate'. Publish will be as fast as possible");
     }
     if (mPubFrameRate < 0.1) {
       RCLCPP_WARN(
@@ -972,6 +1002,9 @@ void ZedCamera::getVideoParams()
     "video.exposure", mCamExposure, mCamExposure,
     " * [DYN] Exposure: ", true);
   getParam("video.gain", mCamGain, mCamGain, " * [DYN] Gain: ", true);
+  getParam("video.auto_exposure_roi", mCamAutoExpRoi, mCamAutoExpRoi, "", true);
+  RCLCPP_INFO(get_logger(), " * [DYN] Auto Exposure ROI active: %s", mCamAutoExpRoi ? "TRUE" : "FALSE");
+  getParam("video.roi", mCamExpRoiVec, " * [DYN] Exposure ROI: ", true);
   getParam("video.auto_whitebalance", mCamAutoWB, mCamAutoWB, "", true);
   RCLCPP_INFO(
     get_logger(), " * [DYN] Auto White Balance: %s",
@@ -1237,6 +1270,12 @@ void ZedCamera::getDepthParams()
     RCLCPP_INFO(
       get_logger(), " * [DYN] Remove saturated areas: %s",
       mRemoveSatAreas ? "TRUE" : "FALSE");
+    getParam(
+      "depth.enable_fill_mode", mEnableFillMode, mEnableFillMode, 
+      "", true);
+    RCLCPP_INFO(
+      get_logger(), " * [DYN] Enable fill mode: %s", 
+      mEnableFillMode ? "TRUE" : "FALSE");      
     // ------------------------------------------
   }
 }
@@ -2616,6 +2655,54 @@ rcl_interfaces::msg::SetParametersResult ZedCamera::callback_paramChange(
         get_logger(), "Parameter '" << param.get_name()
                                     << "' correctly set to "
                                     << val);
+    } else if (param.get_name() == "video.auto_exposure_roi") {
+      rclcpp::ParameterType correctType = rclcpp::ParameterType::PARAMETER_BOOL;
+      if (param.get_type() != correctType) {
+        result.successful = false;
+        result.reason = param.get_name() + " must be a " + rclcpp::to_string(correctType);
+        RCLCPP_WARN_STREAM(get_logger(), result.reason);
+        break;
+      }
+
+      bool val = param.as_bool();
+
+      if (val != mCamAutoExpRoi) {
+        if (!val) {
+          mCamExpRoi = sl::Rect(0, 0, mCamWidth, mCamHeight);
+          mCamExpRoiSide = sl::SIDE::BOTH;
+        }
+        mTriggerAutoExpRoi = true;
+      }
+
+      mCamAutoExpRoi = val;
+
+      RCLCPP_INFO_STREAM(
+        get_logger(), "Parameter '" << param.get_name() << "' correctly set to " << val);
+    } else if (param.get_name() == "video.roi") {
+      rclcpp::ParameterType correctType = rclcpp::ParameterType::PARAMETER_INTEGER_ARRAY;
+      if (param.get_type() != correctType || param.as_integer_array().size() != 5) {
+        result.successful = false;
+        result.reason = param.get_name() + " must be a " + rclcpp::to_string(correctType) + " with 5 elements";
+        RCLCPP_WARN_STREAM(get_logger(), result.reason);
+        break;
+      }
+
+      if (!mCamAutoExpRoi) {
+        result.successful = false;
+        result.reason = "Cannot set 'video.roi' if 'video.auto_exposure_roi' is False";
+        RCLCPP_WARN_STREAM(get_logger(), result.reason);
+      } else {
+        mCamExpRoi.x = param.as_integer_array()[0];
+        mCamExpRoi.y = param.as_integer_array()[1];
+        mCamExpRoi.width = param.as_integer_array()[2];
+        mCamExpRoi.height = param.as_integer_array()[3];
+        mCamExpRoiSide = sl::SIDE(param.as_integer_array()[4]);
+        mTriggerAutoExpRoi = true;
+        RCLCPP_INFO_STREAM(
+          get_logger(), "Parameter '" << param.get_name() << "' correctly set to: " << mCamExpRoi.x <<
+            ", " << mCamExpRoi.y << ", " << mCamExpRoi.width << ", " << mCamExpRoi.height << ", " <<
+            static_cast<int>(mCamExpRoiSide));
+      }
     } else if (param.get_name() == "video.auto_whitebalance") {
       rclcpp::ParameterType correctType = rclcpp::ParameterType::PARAMETER_BOOL;
       if (param.get_type() != correctType) {
@@ -2764,6 +2851,20 @@ rcl_interfaces::msg::SetParametersResult ZedCamera::callback_paramChange(
         "Parameter '" << param.get_name()
                       << "' correctly set to "
                       << (mRemoveSatAreas ? "TRUE" : "FALSE"));
+    } else if (param.get_name() == "depth.enable_fill_mode") {
+      rclcpp::ParameterType correctType = rclcpp::ParameterType::PARAMETER_BOOL;
+      if (param.get_type() != correctType) {
+        result.successful = false;
+        result.reason = param.get_name() + " must be a " + rclcpp::to_string(correctType);
+        RCLCPP_WARN_STREAM(get_logger(), result.reason);
+        break;
+      }
+
+      mEnableFillMode = param.as_bool();
+
+      RCLCPP_INFO_STREAM(
+        get_logger(), "Parameter '" << param.get_name() << "' correctly set to " <<
+          (mEnableFillMode ? "TRUE" : "FALSE"));
     } else if (param.get_name() == "pos_tracking.transform_time_offset") {
       rclcpp::ParameterType correctType =
         rclcpp::ParameterType::PARAMETER_DOUBLE;
@@ -3375,6 +3476,7 @@ void ZedCamera::initPublishers()
 
   // Set the positional tracking topic names
   mPoseTopic = mTopicRoot + "pose";
+  mPoseDelayTopic = mPoseTopic + "/delay_ms";
   mPoseStatusTopic = mPoseTopic + "/status";
   mPoseCovTopic = mPoseTopic + "_with_covariance";
   mGnssPoseTopic = mPoseTopic + "/filtered";
@@ -3577,6 +3679,11 @@ void ZedCamera::initPublishers()
     RCLCPP_INFO_STREAM(
       get_logger(), "Advertised on topic: "
         << mPubPoseStatus->get_topic_name());
+    mPubPoseDelay = create_publisher<std_msgs::msg::Float32>(
+      mPoseDelayTopic, mQos, mPubOpt);
+    RCLCPP_INFO_STREAM(
+      get_logger(), 
+      "Advertised on topic: " << mPubPoseDelay->get_topic_name());
     mPubPoseCov =
       create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
       mPoseCovTopic, mQos, mPubOpt);
@@ -5769,6 +5876,7 @@ void ZedCamera::threadFunc_zedGrab()
   mRunParams.enable_depth = false;
   mRunParams.measure3D_reference_frame = sl::REFERENCE_FRAME::CAMERA;
   mRunParams.remove_saturated_areas = mRemoveSatAreas;
+  mRunParams.enable_fill_mode = mEnableFillMode;
   // <---- Grab Runtime parameters
 
   // Infinite grab thread
@@ -6002,6 +6110,33 @@ void ZedCamera::threadFunc_zedGrab()
       // <---- Check recording status
     }
 
+    if (!mDepthDisabled) {
+      // ----> Localization processing
+      if (mPosTrackingStarted) {
+        if (!mSvoPause) {
+          DEBUG_PT("================================================================");
+          DEBUG_PT("***** processOdometry *****");
+          processOdometry();
+          DEBUG_PT("***** processPose *****");
+          processPose();
+          if (mGnssFusionEnabled) {
+            if (mSvoMode) {
+              DEBUG_PT("***** processSvoGnssData *****");
+              processSvoGnssData();
+            }
+            DEBUG_PT("***** processGeoPose *****");
+            processGeoPose();
+          }
+        }
+
+        // Publish `odom` and `map` TFs at the grab frequency
+        // RCLCPP_INFO(get_logger(), "Publishing TF -> threadFunc_zedGrab");
+        DEBUG_PT("***** publishTFs *****");
+        publishTFs(mFrameTimestamp);
+      }
+      // <---- Localization processing
+    }
+    
     // ----> Retrieve Image/Depth data if someone has subscribed to
     // Retrieve data if there are subscriber to topics
     if (areVideoDepthSubscribed()) {
@@ -6060,31 +6195,6 @@ void ZedCamera::threadFunc_zedGrab()
         mPcPublishing = false;
       }
       // <---- Retrieve the point cloud if someone has subscribed to
-
-      // ----> Localization processing
-      if (mPosTrackingStarted) {
-        if (!mSvoPause) {
-          DEBUG_PT("================================================================");
-          DEBUG_PT("***** processOdometry *****");
-          processOdometry();
-          DEBUG_PT("***** processPose *****");
-          processPose();
-          if (mGnssFusionEnabled) {
-            if (mSvoMode) {
-              DEBUG_PT("***** processSvoGnssData *****");
-              processSvoGnssData();
-            }
-            DEBUG_PT("***** processGeoPose *****");
-            processGeoPose();
-          }
-        }
-
-        // Publish `odom` and `map` TFs at the grab frequency
-        // RCLCPP_INFO(get_logger(), "Publishing TF -> threadFunc_zedGrab");
-        DEBUG_PT("***** publishTFs *****");
-        publishTFs(mFrameTimestamp);
-      }
-      // <---- Localization processing
 
       mObjDetMutex.lock();
       if (mObjDetRunning) {
@@ -7435,6 +7545,7 @@ void ZedCamera::processPose()
       sl::CameraIdentifier(), sl::POSITION_TYPE::FUSION);
   }
 
+  publishPoseDelay();
   publishPoseStatus();
   publishGnssPoseStatus();
 
@@ -7517,6 +7628,29 @@ void ZedCamera::processPose()
     // Publish Pose message
     publishPose();
     mPosTrackingReady = true;
+  }
+}
+
+void ZedCamera::publishPoseDelay()
+{
+  size_t statusSub = 0;
+
+  try {
+    statusSub = count_subscribers(mPoseDelayTopic); // mPubPoseStatus subscribers
+  } catch (...) {
+    rcutils_reset_error();
+    DEBUG_STREAM_PT("publishPoseDelay: Exception while counting subscribers");
+    return;
+  }
+
+  if (statusSub > 0) {
+    rclcpp::Time current_time = get_clock()->now();
+    auto diff = current_time - mFrameTimestamp;
+    auto diff_ns = diff.nanoseconds();
+    auto diff_ms = diff_ns / 1000000.0;
+    std::unique_ptr<std_msgs::msg::Float32> msg = std::make_unique<std_msgs::msg::Float32>();
+    msg->data = static_cast<float>(diff_ms);
+    mPubPoseDelay->publish(std::move(msg));
   }
 }
 
@@ -8308,6 +8442,7 @@ void ZedCamera::applyDepthSettings()
     mRunParams.texture_confidence_threshold =
       mDepthTextConf;      // Update depth texture confidence if changed
     mRunParams.remove_saturated_areas = mRemoveSatAreas;
+    mRunParams.enable_fill_mode = mEnableFillMode;
 
     DEBUG_STREAM_COMM("Depth extraction enabled");
     mRunParams.enable_depth = true;
@@ -8368,6 +8503,17 @@ void ZedCamera::applyVideoSettings()
             << ": "
             << sl::toString(err).c_str());
       }
+    }
+
+    if (mTriggerAutoExpRoi) {
+      setting = sl::VIDEO_SETTINGS::AEC_AGC_ROI;  
+      err = mZed->setCameraSettings(setting, mCamExpRoi, mCamExpRoiSide);
+      if (err != sl::ERROR_CODE::SUCCESS) {
+        RCLCPP_WARN_STREAM(
+          get_logger(),
+          "Error setting " << sl::toString(setting).c_str() << ": " << sl::toString(err).c_str() );
+      }
+      mTriggerAutoExpRoi = false;
     }
 
     if (mTriggerAutoWB) {

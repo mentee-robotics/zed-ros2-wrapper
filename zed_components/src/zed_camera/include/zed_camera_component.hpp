@@ -179,6 +179,7 @@ protected:
     rclcpp::Time t);
   void publishPose();
   void publishGnssPose();
+  void publishPoseDelay();
   void publishPoseStatus();
   void publishGnssPoseStatus();
   void publishGeoPoseStatus();
@@ -225,6 +226,8 @@ protected:
   std::string getParam(
     std::string paramName,
     std::vector<std::vector<float>> & outVal);
+  void getParam(std::string paramName, std::vector<int> & defaultVal, std::string log_info = std::string(),
+    bool dynamic = false);
   std::string parseRoiPoly(
     const std::vector<std::vector<float>> & in_poly,
     std::vector<sl::float2> & out_poly);
@@ -251,6 +254,7 @@ private:
   std::string mOdomTopic;
   std::string mPoseTopic;
   std::string mPoseStatusTopic;
+  std::string mPoseDelayTopic;
   std::string mPoseCovTopic;
   std::string mGnssPoseTopic;
   std::string mGnssPoseStatusTopic;
@@ -440,6 +444,10 @@ private:
   bool mCamAutoExpGain = true;
   int mCamGain = 80;
   int mCamExposure = 80;
+  std::vector<int> mCamExpRoiVec = {0, 0, 1280, 720, static_cast<int>(sl::SIDE::BOTH)};
+  sl::Rect mCamExpRoi = sl::Rect(0, 0, 1280, 720);
+  sl::SIDE mCamExpRoiSide = sl::SIDE::BOTH;
+  bool mCamAutoExpRoi = false;
   bool mCamAutoWB = true;
   int mCamWBTemp = 42;
   int mDepthConf = 50;
@@ -447,6 +455,7 @@ private:
   double mPcPubRate = 15.0;
   double mFusedPcPubRate = 1.0;
   bool mRemoveSatAreas = true;
+  bool mEnableFillMode = false;
 
   int mGmslExpTime = 16666;
   int mGmslAutoExpTimeRangeMin = 28;
@@ -588,6 +597,7 @@ private:
   pointcloudPub mPubCloud;
   pointcloudPub mPubFusedCloud;
   posePub mPubPose;
+  poseDelayPub mPubPoseDelay;
   poseStatusPub mPubPoseStatus;
   poseCovPub mPubPoseCov;
   odomPub mPubOdom;
@@ -694,6 +704,7 @@ private:
   bool mPcPublishing =
     false;    // Indicates if point cloud data are subscribed and then published
   bool mTriggerAutoExpGain = true;  // Triggered on start
+  bool mTriggerAutoExpRoi = true;       // Triggered on start
   bool mTriggerAutoWB = true;       // Triggered on start
   bool mRecording = false;
   sl::RecordingStatus mRecStatus = sl::RecordingStatus();
