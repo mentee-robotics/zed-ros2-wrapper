@@ -269,6 +269,11 @@ void ZedCamera::initServices()
     mSetPoseSrv = create_service<zed_msgs::srv::SetPose>(
       srv_name, std::bind(&ZedCamera::callback_setPose, this, _1, _2, _3));
     RCLCPP_INFO(get_logger(), " * '%s'", mSetPoseSrv->get_service_name());
+    // Save Area Map
+    srv_name = srv_prefix + mSrvSaveAreaMapName;
+    mSaveAreaMapSrv = create_service<std_srvs::srv::Trigger>(
+      srv_name, std::bind(&ZedCamera::callback_saveAreaMap, this, _1, _2, _3));
+    RCLCPP_INFO(get_logger(), " * '%s'", mSaveAreaMapSrv->get_service_name());
     // Enable Object Detection
     srv_name = srv_prefix + mSrvEnableObjDetName;
     mEnableObjDetSrv = create_service<std_srvs::srv::SetBool>(
@@ -4820,14 +4825,6 @@ bool ZedCamera::startPosTracking()
     mInitialPoseSl.getOrientation().oy, mInitialPoseSl.getOrientation().oz,
     mInitialPoseSl.getOrientation().ow);
 
-  if (mAreaMemoryDbPath != "" && !sl_tools::file_exist(mAreaMemoryDbPath)) {
-    mAreaMemoryDbPath = "";
-    RCLCPP_WARN_STREAM(
-      get_logger(),
-      "'area_memory_db_path' path doesn't exist or is unreachable: "
-        << mAreaMemoryDbPath);
-  }
-
   // Tracking parameters
   sl::PositionalTrackingParameters ptParams;
 
@@ -4841,9 +4838,18 @@ bool ZedCamera::startPosTracking()
   ptParams.initial_world_transform = mInitialPoseSl;
   ptParams.set_floor_as_origin = mFloorAlignment;
   ptParams.depth_min_range = mPosTrackDepthMinRange;
-  ptParams.set_as_static = mSetAsStatic;
+  ptParams.set_as_static = false;
   ptParams.set_gravity_as_origin = mSetGravityAsOrigin;
   ptParams.mode = mPosTrkMode;
+
+  if (mAreaMemoryDbPath != "" && !sl_tools::file_exist(mAreaMemoryDbPath)) {
+    ptParams.area_file_path = "";
+    RCLCPP_INFO_STREAM(
+      get_logger(),
+      "'area_memory_db_path':" << mAreaMemoryDbPath << " but you can save it using the service 'save_area_map'");
+  } else {
+    ptParams.area_file_path = mAreaMemoryDbPath.c_str();
+  }
 
   if (_debugPosTracking) {
     DEBUG_PT(" * Positional Tracking parameters:");
@@ -9558,6 +9564,95 @@ void ZedCamera::callback_resetPosTracking(
 
   res->message = "Positional tracking reset OK";
   res->success = true;
+}
+
+void ZedCamera::callback_saveAreaMap(
+  const std::shared_ptr<rmw_request_id_t> request_header,
+  const std::shared_ptr<std_srvs::srv::Trigger_Request> req,
+  std::shared_ptr<std_srvs::srv::Trigger_Response> res)
+{
+  (void)request_header;
+  (void)req;
+
+  std::ostringstream os;
+
+  bool node_running = rclcpp::ok();
+  if (!(mZed->isOpened()))
+  {
+    os << "Cannot save Area Memory. The camera is closed.";
+
+    if (node_running)
+      RCLCPP_WARN_STREAM(get_logger(), os.str().c_str());
+    else
+      std::cerr << os.str() << std::endl;
+
+    res->message = os.str();
+    res->success = false;
+    return;
+  }
+
+  if (mPosTrackingStarted && mAreaMemory)
+  {
+    RCLCPP_INFO_STREAM(get_logger(), "Saving Area Memory file: " << mAreaMemoryDbPath);
+    sl::ERROR_CODE err = mZed->saveAreaMap(sl::String(mAreaMemoryDbPath.c_str()));
+    if (err != sl::ERROR_CODE::SUCCESS)
+    {
+      os << "Error saving positional tracking area memory: " << sl::toString(err).c_str();
+
+      if (node_running)
+        RCLCPP_WARN_STREAM(get_logger(), os.str().c_str());
+      else
+        std::cerr << os.str() << std::endl;
+      res->message = os.str();
+      res->success = false;
+      return;
+    }
+
+    if (node_running)
+      RCLCPP_INFO_STREAM(get_logger(), "Saving Area Memory file: " << mAreaMemoryDbPath);
+    else
+      std::cerr << "Saving Area Memory file: " << mAreaMemoryDbPath << " ";
+
+    sl::AREA_EXPORTING_STATE state;
+    do
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      state = mZed->getAreaExportState();
+      if (node_running)
+        RCLCPP_INFO_STREAM(get_logger(), ".");
+      else
+        std::cerr << ".";
+    } while (state == sl::AREA_EXPORTING_STATE::RUNNING);
+    if (!node_running)
+      std::cerr << std::endl;
+
+    if (state == sl::AREA_EXPORTING_STATE::SUCCESS)
+    {
+      os << "Area Memory file saved correctly.";
+
+      if (node_running)
+        RCLCPP_INFO_STREAM(get_logger(), os.str().c_str());
+      else
+        std::cerr << os.str() << std::endl;
+      res->message = os.str();
+      res->success = true;
+      return;
+    }
+
+    os << "Error saving Area Memory file: " << sl::toString(state).c_str();
+
+    if (node_running)
+      RCLCPP_WARN_STREAM(get_logger(), os.str().c_str());
+    else
+      std::cerr << os.str() << std::endl;
+
+    res->message = os.str();
+    res->success = false;
+    return;
+  }
+  res->message = "Area Memory not available";
+  res->success = false;
+  return;
 }
 
 void ZedCamera::callback_setPose(
